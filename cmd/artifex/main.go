@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -12,10 +13,11 @@ import (
 )
 
 var success = 0
-var failed = 0
+var fails = 0
 
 func main() {
-	const maxWorkers = 500
+	// 700 working to 100k
+	const maxWorkers = 600
 	const maxQueue = 100000
 	d := artifex.NewDispatcher(maxWorkers, maxQueue)
 	d.Start()
@@ -26,7 +28,12 @@ func main() {
 	}
 
 	for {
-		time.Sleep(10 * time.Millisecond)
+		log.Print(success, fails)
+		time.Sleep(1 * time.Second)
+
+		if success == maxQueue {
+			break
+		}
 	}
 }
 
@@ -43,12 +50,14 @@ func executePayment() {
 		if err != nil {
 			log.Printf("Error on request %v", err)
 			time.Sleep(1 * time.Second)
+			fails++
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			log.Printf("Request did not return OK %v", resp)
 			time.Sleep(1 * time.Second)
+			fails++
 			continue
 		}
 
@@ -56,5 +65,6 @@ func executePayment() {
 	}
 
 	success++
-	time.Sleep(1 * time.Second)
+	delay := rand.Intn(1000) + 1000 // a random delay (currently randing to 1501 + 1000 * ms works really well)
+	time.Sleep(time.Duration(delay) * time.Millisecond)
 }
