@@ -2,34 +2,64 @@ package queue
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
-type Job struct {
-	CorrelationID string
-	Amount        int64
+type PaymentProcessor struct {
+	MinResponseTime int64
+	Failing         bool
+	Endpoint        string
+	RedisKey        string
 }
 
-func (j *Job) Execute() {
-	client := &http.Client{Timeout: 10 * time.Second}
+type Payment struct {
+	CorrelationID string    `json:"correlationId"`
+	Amount        int64     `json:"amount"`
+	RequestedAt   time.Time `json:"requestedAt"`
+}
 
-	reqBody := fmt.Sprintf(`{"correlationId":"%s","amount":%d}`, j.CorrelationID, j.Amount)
+func choosePaymentProcessor() (PaymentProcessor, error) {
+	return PaymentProcessor{
+		MinResponseTime: 0,
+		Failing:         false,
+		Endpoint:        "http://payment-processor:8080/payments",
+		RedisKey:        "default",
+	}, nil
+}
 
-	req, err := http.NewRequest("POST", "http://localhost:8001/payments", strings.NewReader(reqBody))
+func usePaymentProcessor(endpoint, reqBody string, client http.Client) error {
+	req, err := http.NewRequest("POST", endpoint, strings.NewReader(reqBody))
 	if err != nil {
-		log.Printf("Error on request creation %v", err)
-		return
+		return err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Error on request execution %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return err
+	}
+
+	return nil
+}
+
+func ExecutePayment(payment Payment, client http.Client) {
+	reqBody := fmt.Sprintf(`{"correlationId":"%s","amount":%d,"requestedAt":"%s"}`, payment.CorrelationID, payment.Amount, payment.RequestedAt.Format(time.RFC3339))
+
+	pp, err := choosePaymentProcessor()
+	if err != nil {
 		return
 	}
 
-	log.Print(resp)
+	err = usePaymentProcessor(pp.Endpoint, reqBody, client)
+	if err != nil {
+		return
+	}
+
 }

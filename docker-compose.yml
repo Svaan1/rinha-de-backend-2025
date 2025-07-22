@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: queue
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    sysctls:
+      - net.ipv4.tcp_tw_reuse=1
+      - net.ipv4.tcp_fin_timeout=15
+    networks:
+      - payment-processor
+
+networks:
+  payment-processor:
+    external: true
+
