@@ -8,8 +8,8 @@ import (
 	"github.com/svaan1/rinha-de-backend-2025/internal/redis"
 )
 
-const MaxWorkers = 600
-const MaxQueue = 100000
+const MaxWorkers = 300
+const MaxQueue = 5000
 const redisAddr = "redis:6379"
 
 var HttpClient = &http.Client{

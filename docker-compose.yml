@@ -1,23 +1,37 @@
-version: '3.9'
-
-services:
-  api:
+x-api-template: &api-template
     build:
       context: .
       dockerfile: Dockerfile.api
-    container_name: api
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
-    ports:
-      - 9999:8080 
     sysctls:
       - net.ipv4.tcp_tw_reuse=1
       - net.ipv4.tcp_fin_timeout=15
     networks:
       - backend
       - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: "0.65"
+          memory: "155MB"
+
+services:
+  api1:
+    <<: *api-template
+    container_name: api1
+    depends_on:
+      - health
+      - redis
+
+  api2:
+    <<: *api-template
+    container_name: api2
+    depends_on:
+      - health
+      - redis
 
   health:
     build:
@@ -30,11 +44,31 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - 6379:6379
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "30MB"
 
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro1
+    ports:
+      - "9999:80"
+    depends_on:
+      - api1
+      - api2
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "10MB"
 
 networks:
   backend:

@@ -2,7 +2,6 @@ package payments
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -44,8 +43,6 @@ func usePaymentProcessor(pp *PaymentProcessor, reqBody string) error {
 func ExecutePayment(payment Payment) {
 	// Create the payload
 	reqBody := fmt.Sprintf(`{"correlationId":"%s","amount":%.2f,"requestedAt":"%s"}`, payment.CorrelationID, payment.Amount, payment.RequestedAt.Format("2006-01-02T15:04:05.000Z"))
-
-	log.Print(reqBody)
 
 	var pp *PaymentProcessor
 	var err error

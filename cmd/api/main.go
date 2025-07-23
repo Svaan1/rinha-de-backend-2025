@@ -17,8 +17,7 @@ func main() {
 	http.HandleFunc("/payments-summary", api.PaymentSummaryHandler)
 	http.HandleFunc("/purge-payments", api.PurgePaymentsHandler)
 
-	log.Print("Starting server at :8080")
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":80", nil)
 	if err != nil {
 		log.Printf("Failed to start server %v", err)
 	}
