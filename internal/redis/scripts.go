@@ -2,13 +2,6 @@ package redis
 
 import "github.com/redis/go-redis/v9"
 
-var fetchPaymentProcessorsScript = redis.NewScript(`
-local defaultData = redis.call('HMGET', 'payment-processor', 'failing', 'minResponseTime')
-local fallbackData = redis.call('HMGET', 'payment-processor-fallback', 'failing', 'minResponseTime')
-
-return {defaultData[1], defaultData[2], fallbackData[1], fallbackData[2]}
-`)
-
 var createPaymentScript = redis.NewScript(`
 local paymentKey = KEYS[1]
 local sortedSetKey = KEYS[2]
@@ -46,9 +39,4 @@ for i = 1, #paymentKeys do
 end
 
 return {defaultRequests, defaultAmountCents, fallbackRequests, fallbackAmountCents}
-`)
-
-var purgeScript = redis.NewScript(`
-local defaultData = redis.call('HMGET', 'payment-processor', 'failing', 'minResponseTime')
-local fallbackData = redis.call('HMGET', 'payment-processor-fallback', 'failing', 'minResponseTime')
 `)

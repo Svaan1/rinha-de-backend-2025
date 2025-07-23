@@ -4,42 +4,24 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
+
+	"github.com/svaan1/rinha-de-backend-2025/internal/payments"
 )
 
-type PaymentProcessorHealth struct {
-	Failing         bool  `json:"failing"`
-	MinResponseTime int64 `json:"minResponseTime"`
-}
-
-type PaymentProcessorHealthResponse struct {
-	Default  *PaymentProcessorHealth `json:"default"`
-	Fallback *PaymentProcessorHealth `json:"fallback"`
-}
-
-var (
-	defaultPaymentProcessorEndpoint  = getEnvOrDefault("DEFAULT_PAYMENT_PROCESSOR_ENDPOINT", "http://localhost:8001") + "/payments/service-health"
-	fallbackPaymentProcessorEndpoint = getEnvOrDefault("FALLBACK_PAYMENT_PROCESSOR_ENDPOINT", "http://localhost:8002") + "/payments/service-health"
+const (
+	defaultPaymentProcessorEndpoint  = "http://payment-processor-default:8080/payments/service-health"
+	fallbackPaymentProcessorEndpoint = "http://payment-processor-fallback:8080/payments/service-health"
 )
 
 var (
-	healthStatus   PaymentProcessorHealthResponse
+	healthStatus   payments.PaymentProcessorHealthCheck
 	healthStatusMu sync.RWMutex
-	httpClient     = &http.Client{Timeout: 3 * time.Second}
+	httpClient     = &http.Client{Timeout: 10 * time.Second}
 )
 
-func getEnvOrDefault(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-
-	return value
-}
-
-func getHealth(endpoint string) *PaymentProcessorHealth {
+func getHealth(endpoint string) *payments.PaymentProcessorHealth {
 	resp, err := httpClient.Get(endpoint)
 	if err != nil {
 		log.Printf("Error fetching health from %s: %v", endpoint, err)
@@ -52,7 +34,7 @@ func getHealth(endpoint string) *PaymentProcessorHealth {
 		return nil
 	}
 
-	var health PaymentProcessorHealth
+	var health payments.PaymentProcessorHealth
 	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
 		log.Printf("Error decoding response from %s: %v", endpoint, err)
 		return nil
@@ -69,7 +51,7 @@ func healthTicker() {
 		var wg sync.WaitGroup
 		wg.Add(2)
 
-		var defaultHealth, fallbackHealth *PaymentProcessorHealth
+		var defaultHealth, fallbackHealth *payments.PaymentProcessorHealth
 
 		go func() {
 			defer wg.Done()
@@ -84,10 +66,9 @@ func healthTicker() {
 		wg.Wait()
 
 		healthStatusMu.Lock()
-		healthStatus.Default = defaultHealth
-		healthStatus.Fallback = fallbackHealth
+		healthStatus.Default = *defaultHealth
+		healthStatus.Fallback = *fallbackHealth
 		healthStatusMu.Unlock()
-		log.Println("Health status updated.")
 	}
 
 	performCheck()
@@ -111,7 +92,7 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	go healthTicker()
 
-	http.HandleFunc("/health", healthCheckHandler)
+	http.HandleFunc("/", healthCheckHandler)
 
 	log.Print("Starting server at :8080")
 	err := http.ListenAndServe(":8080", nil)
