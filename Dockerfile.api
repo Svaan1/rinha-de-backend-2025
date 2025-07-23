@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o queue ./cmd/queue/main.go
+RUN go build -o api ./cmd/api/main.go
 
 
 FROM alpine:3.20
@@ -20,6 +20,6 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 WORKDIR /home/appuser
 
-COPY --from=builder /app/queue /home/appuser/queue
+COPY --from=builder /app/api /home/appuser/api
 
-CMD ["/home/appuser/queue"]
+CMD ["/home/appuser/api"]

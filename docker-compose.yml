@@ -1,22 +1,43 @@
 version: '3.9'
 
 services:
-  queue:
+  api:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: queue
+      dockerfile: Dockerfile.api
+    container_name: api
+    hostname: api
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
+    environment:
+      - HEALTH_ENDPOINT=http://health:8080
+      - DEFAULT_PAYMENT_PROCESSOR_ENDPOINT=http://payment-processor-default:8080
+      - FALLBACK_PAYMENT_PROCESSOR_ENDPOINT=http://payment-processor-fallback:8080
     sysctls:
       - net.ipv4.tcp_tw_reuse=1
       - net.ipv4.tcp_fin_timeout=15
     networks:
+      - backend
+      - payment-processor
+
+  health:
+    build:
+      context: .
+      dockerfile: Dockerfile.health
+    container_name: health
+    hostname: health
+    environment:
+      - DEFAULT_PAYMENT_PROCESSOR_ENDPOINT=http://payment-processor-default:8080
+      - FALLBACK_PAYMENT_PROCESSOR_ENDPOINT=http://payment-processor-fallback:8080
+    networks:
+      - backend
       - payment-processor
 
 networks:
+  backend:
+    driver: bridge
   payment-processor:
     external: true
 

@@ -24,7 +24,7 @@ func choosePaymentProcessor() (PaymentProcessor, error) {
 	return PaymentProcessor{
 		MinResponseTime: 0,
 		Failing:         false,
-		Endpoint:        "http://payment-processor:8080/payments",
+		Endpoint:        "http://payment-processor-default:8080/payments",
 		RedisKey:        "default",
 	}, nil
 }
