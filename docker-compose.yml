@@ -15,8 +15,8 @@ x-api-template: &api-template
     deploy:
       resources:
         limits:
-          cpus: "0.65"
-          memory: "155MB"
+          cpus: "0.6"
+          memory: "150MB"
 
 services:
   api1:
@@ -41,6 +41,11 @@ services:
     networks:
       - backend
       - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "10MB"
 
   redis:
     image: redis:7-alpine
