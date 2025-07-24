@@ -1,30 +1,38 @@
 package api
 
 import (
-	"encoding/json"
-	"log"
+	"io"
 	"math"
 	"net/http"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/svaan1/rinha-de-backend-2025/internal/globals"
 	"github.com/svaan1/rinha-de-backend-2025/internal/payments"
 )
 
 func PaymentHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse the body
-	var req PaymentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Failed to parse body %v", err)
+	// Read the body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
-	// Dispatch the task
 	go func() {
+		// Unmarshal de JSON
+		var data PaymentRequest
+		if err := sonic.Unmarshal(body, &data); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+
+		// Apply the task to the queue
 		task := func() {
 			payments.ExecutePayment(payments.Payment{
-				CorrelationID: req.CorrelationID,
-				Amount:        req.Amount,
+				CorrelationID: data.CorrelationID,
+				Amount:        data.Amount,
 				RequestedAt:   time.Now().UTC(),
 			})
 		}
@@ -57,12 +65,18 @@ func PaymentSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Query from redis
 	result, err := globals.RedisClient.GetPaymentSummary(fromTimestamp, toTimestamp)
 	if err != nil {
-		log.Printf("Failed to get payment summary: %v", err)
+		return
 	}
 
-	// Return the encoded struct
+	// Marshal
+	jsonBytes, err := sonic.Marshal(result)
+	if err != nil {
+		return
+	}
+
+	// Send response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	w.Write(jsonBytes)
 }
 
 func PurgePaymentsHandler(w http.ResponseWriter, r *http.Request) {
