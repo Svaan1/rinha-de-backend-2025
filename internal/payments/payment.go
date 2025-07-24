@@ -2,6 +2,7 @@ package payments
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strings"
@@ -17,18 +18,18 @@ type Payment struct {
 }
 
 func usePaymentProcessor(pp *PaymentProcessor, reqBody string) error {
-	// Create the request object
-	req, err := http.NewRequest("POST", pp.Endpoint, strings.NewReader(reqBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
 	// Execute the post request
-	resp, err := globals.HttpClient.Do(req)
+	resp, err := globals.HttpClient.Post(pp.Endpoint, "application/json", strings.NewReader(reqBody))
 	if err != nil {
 		return err
 	}
+
+	// Read the body anyways
+	_, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	defer resp.Body.Close()
 
 	// Handle non 200

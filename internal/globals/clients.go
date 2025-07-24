@@ -8,10 +8,6 @@ import (
 	"github.com/svaan1/rinha-de-backend-2025/internal/redis"
 )
 
-const MaxWorkers = 300
-const MaxQueue = 5000
-const redisAddr = "redis:6379"
-
 var HttpClient = &http.Client{
 	Timeout: 30 * time.Second,
 	Transport: &http.Transport{
@@ -22,6 +18,6 @@ var HttpClient = &http.Client{
 	},
 }
 
-var RedisClient = redis.New(redisAddr, "", 0)
+var RedisClient = redis.New(redisAddr, redisPasswd, redisDB)
 
 var QueueDispatcher = artifex.NewDispatcher(MaxWorkers, MaxQueue)

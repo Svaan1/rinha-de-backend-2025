@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"time"
-)
 
-const healthCheckEndpoint = "http://health:8080/"
+	"github.com/svaan1/rinha-de-backend-2025/internal/globals"
+)
 
 type PaymentProcessorHealth struct {
 	Failing         bool
@@ -28,7 +28,7 @@ type PaymentProcessor struct {
 
 var DefaultPaymentProcessor = PaymentProcessor{
 	Name:     "default",
-	Endpoint: "http://payment-processor-default:8080/payments",
+	Endpoint: globals.DefaultPaymentProcessorEndpoint,
 	Status: PaymentProcessorHealth{
 		Failing:         false,
 		MinResponseTime: 0,
@@ -37,7 +37,7 @@ var DefaultPaymentProcessor = PaymentProcessor{
 
 var FallbackPaymentProcessor = PaymentProcessor{
 	Name:     "fallback",
-	Endpoint: "http://payment-processor-fallback:8080/payments",
+	Endpoint: globals.FallbackPaymentProcessorEndpoint,
 	Status: PaymentProcessorHealth{
 		Failing:         false,
 		MinResponseTime: 0,
@@ -57,7 +57,7 @@ func StartHealthCheckTicker() {
 
 func UpdateProcessorHealth() error {
 	// Fetch the health service
-	resp, err := http.Get(healthCheckEndpoint)
+	resp, err := globals.HttpClient.Get(globals.HealthCheckEndpoint)
 	if err != nil {
 		return err
 	}
