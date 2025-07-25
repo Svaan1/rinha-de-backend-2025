@@ -1,13 +1,13 @@
 package payments
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/svaan1/rinha-de-backend-2025/internal/globals"
+	"github.com/valyala/fasthttp"
 )
 
 type PaymentProcessorHealth struct {
@@ -56,21 +56,31 @@ func StartHealthCheckTicker() {
 }
 
 func UpdateProcessorHealth() error {
-	// Fetch the health service
-	resp, err := globals.HttpClient.Get(globals.HealthCheckEndpoint)
+	// Execute the post request
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI(globals.HealthCheckEndpoint)
+	req.Header.SetMethod("GET")
+
+	err := globals.HTTPClient.Do(req, resp)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	// If non 200, return an error
-	if resp.StatusCode != http.StatusOK {
+	body := resp.Body()
+
+	// Handle non 200
+	if resp.StatusCode() != 200 {
 		return fmt.Errorf("health service returned non ok")
 	}
 
 	// Parse the response body
 	var paymentProcessorHealthCheck PaymentProcessorHealthCheck
-	if err := json.NewDecoder(resp.Body).Decode(&paymentProcessorHealthCheck); err != nil {
+	if err = sonic.Unmarshal(body, &paymentProcessorHealthCheck); err != nil {
 		return err
 	}
 
