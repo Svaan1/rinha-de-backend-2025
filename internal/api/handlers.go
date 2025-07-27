@@ -23,7 +23,6 @@ func PaymentHandler(c *fiber.Ctx) error {
 			payments.ExecutePayment(payments.Payment{
 				CorrelationID: data.CorrelationID,
 				Amount:        data.Amount,
-				RequestedAt:   time.Now().UTC(),
 			})
 		}
 

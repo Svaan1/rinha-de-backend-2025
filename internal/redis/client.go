@@ -27,7 +27,7 @@ func New(addr string, password string, DB int) RedisClient {
 	}
 }
 
-func (r *RedisClient) CreatePayment(key string, amount int64, timestamp float64) error {
+func (r *RedisClient) CreatePayment(key string, amount int64, timestamp int64) error {
 	keys := []string{key, "payments:by_time"}
 	args := []interface{}{timestamp, amount}
 	if err := createPaymentScript.Run(r.ctx, r.rdb, keys, args).Err(); err != nil {

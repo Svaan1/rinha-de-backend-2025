@@ -8,8 +8,7 @@ local sortedSetKey = KEYS[2]
 local timestamp = ARGV[1]
 local amountCents = ARGV[2]
 
-redis.call('ZADD', sortedSetKey, timestamp, paymentKey)
-redis.call('HSET', paymentKey, 'amount', amountCents)
+redis.call('ZADD', sortedSetKey, timestamp, paymentKey .. ':' .. amountCents)
 return 'OK'
 `)
 
@@ -18,24 +17,32 @@ local sortedSetKey = KEYS[1]
 local fromTimestamp = ARGV[1]
 local toTimestamp = ARGV[2]
 
-local paymentKeys = redis.call('ZRANGEBYSCORE', sortedSetKey, fromTimestamp, toTimestamp)
+local paymentEntries = redis.call('ZRANGEBYSCORE', sortedSetKey, fromTimestamp, toTimestamp)
+
 local defaultRequests = 0
 local defaultAmountCents = 0
 local fallbackRequests = 0
 local fallbackAmountCents = 0
 
-for i = 1, #paymentKeys do
-    local paymentKey = paymentKeys[i]
-    local amountCents = redis.call('HGET', paymentKey, 'amount')
+for i = 1, #paymentEntries do
+    local entry = paymentEntries[i]
+
+	local colonPos = string.find(entry, ':')
+    local secondColonPos = string.find(entry, ':', colonPos + 1)
     
-	local amount = tonumber(amountCents)
-	if string.match(paymentKey, "default:") then
-		defaultRequests = defaultRequests + 1
-		defaultAmountCents = defaultAmountCents + amount
-	elseif string.match(paymentKey, "fallback:") then
-		fallbackRequests = fallbackRequests + 1
-		fallbackAmountCents = fallbackAmountCents + amount
-	end
+    if secondColonPos then
+        local processorType = string.sub(entry, 1, colonPos - 1)
+        local amountStr = string.sub(entry, secondColonPos + 1)
+        local amount = tonumber(amountStr)
+        
+        if processorType == "default" then
+            defaultRequests = defaultRequests + 1
+            defaultAmountCents = defaultAmountCents + amount
+        elseif processorType == "fallback" then
+            fallbackRequests = fallbackRequests + 1
+            fallbackAmountCents = fallbackAmountCents + amount
+        end
+    end
 end
 
 return {defaultRequests, defaultAmountCents, fallbackRequests, fallbackAmountCents}

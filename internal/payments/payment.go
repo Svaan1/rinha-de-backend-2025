@@ -86,7 +86,7 @@ func ExecutePayment(payment Payment) {
 	// Store the successful payment at redis
 	paymentKey := pp.Name + ":" + payment.CorrelationID
 	fixedAmount := int64(math.Round(payment.Amount * 100))
-	timestamp := float64(payment.RequestedAt.UnixMicro())
+	timestamp := payment.RequestedAt.UnixMicro()
 
 	err = globals.RedisClient.CreatePayment(paymentKey, fixedAmount, timestamp)
 	if err != nil {
