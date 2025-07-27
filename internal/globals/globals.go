@@ -8,6 +8,18 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+const (
+	DefaultPaymentProcessorEndpoint  = "http://payment-processor-default:8080/payments"
+	FallbackPaymentProcessorEndpoint = "http://payment-processor-fallback:8080/payments"
+	HealthCheckEndpoint              = "http://health:8080/"
+
+	MaxWorkers  = 300
+	MaxQueue    = 5000
+	redisAddr   = "redis:6379"
+	redisPasswd = ""
+	redisDB     = 0
+)
+
 var HTTPClient = &fasthttp.Client{
 	MaxResponseBodySize: 4 * 1024 * 1024,
 	ReadTimeout:         30 * time.Second,
