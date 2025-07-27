@@ -13,22 +13,20 @@ import (
 func PaymentHandler(c *fiber.Ctx) error {
 	body := c.Body()
 
-	go func() {
-		var data PaymentRequest
-		if err := sonic.Unmarshal(body, &data); err != nil {
-			return
-		}
+	var data PaymentRequest
+	if err := sonic.Unmarshal(body, &data); err != nil {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
 
-		task := func() {
-			payments.ExecutePayment(payments.Payment{
-				CorrelationID: data.CorrelationID,
-				Amount:        data.Amount,
-			})
-		}
+	task := func() {
+		payments.ExecutePayment(payments.Payment{
+			CorrelationID: data.CorrelationID,
+			Amount:        data.Amount,
+			RequestedAt:   time.Now().UTC(),
+		})
+	}
 
-		globals.QueueDispatcher.Dispatch(task)
-	}()
-
+	globals.QueueDispatcher.Dispatch(task)
 	return c.SendStatus(fiber.StatusCreated)
 }
 

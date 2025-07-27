@@ -14,7 +14,7 @@ const (
 	HealthCheckEndpoint              = "http://health:8080/"
 
 	MaxWorkers  = 300
-	MaxQueue    = 5000
+	MaxQueue    = 20000
 	redisAddr   = "redis:6379"
 	redisPasswd = ""
 	redisDB     = 0
@@ -29,7 +29,7 @@ var HTTPClient = &fasthttp.Client{
 		Concurrency: MaxWorkers * 2,
 	}).Dial,
 
-	MaxConnsPerHost:               MaxWorkers * 2,
+	MaxConnsPerHost:               MaxWorkers * 4,
 	MaxIdleConnDuration:           90 * time.Second,
 	MaxConnDuration:               0,
 	MaxConnWaitTimeout:            5 * time.Second,
