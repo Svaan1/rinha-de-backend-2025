@@ -13,9 +13,11 @@ type RedisClient struct {
 
 func New(addr string, password string, DB int) RedisClient {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       0,
+		Addr:         addr,
+		Password:     password,
+		DB:           0,
+		PoolSize:     500,
+		MinIdleConns: 50,
 	})
 	ctx := context.Background()
 
