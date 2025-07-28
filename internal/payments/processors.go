@@ -2,12 +2,13 @@ package payments
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/svaan1/rinha-de-backend-2025/internal/globals"
-	"github.com/valyala/fasthttp"
 )
 
 type PaymentProcessorHealth struct {
@@ -56,35 +57,25 @@ func StartHealthCheckTicker() {
 }
 
 func UpdateProcessorHealth() error {
-	// Execute the post request
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	req.SetRequestURI(globals.HealthCheckEndpoint)
-	req.Header.SetMethod("GET")
-
-	err := globals.HTTPClient.Do(req, resp)
+	resp, err := http.Get(globals.HealthCheckEndpoint)
 	if err != nil {
 		return err
 	}
 
-	body := resp.Body()
-
-	// Handle non 200
-	if resp.StatusCode() != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("health service returned non ok")
 	}
 
-	// Parse the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	var paymentProcessorHealthCheck PaymentProcessorHealthCheck
 	if err = sonic.Unmarshal(body, &paymentProcessorHealthCheck); err != nil {
 		return err
 	}
 
-	// Update the object
 	DefaultPaymentProcessor.Status = paymentProcessorHealthCheck.Default
 	FallbackPaymentProcessor.Status = paymentProcessorHealthCheck.Fallback
 

@@ -13,17 +13,7 @@ func main() {
 	go payments.StartHealthCheckTicker()
 	globals.QueueDispatcher.Start()
 
-	app := fiber.New(fiber.Config{
-		BodyLimit:            1024 * 1024,
-		ReadBufferSize:       4096,
-		WriteBufferSize:      4096,
-		CompressedFileSuffix: ".fiber.gz",
-		ProxyHeader:          "",
-		DisableKeepalive:     false,
-		IdleTimeout:          0,
-		ReadTimeout:          0,
-		WriteTimeout:         0,
-	})
+	app := fiber.New()
 
 	app.Post("/payments", api.PaymentHandler)
 	app.Get("/payments-summary", api.PaymentSummaryHandler)

@@ -1,13 +1,15 @@
 package payments
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/svaan1/rinha-de-backend-2025/internal/globals"
-	"github.com/valyala/fasthttp"
 )
 
 type PaymentRequest struct {
@@ -27,7 +29,7 @@ func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
 	payload := PaymentPayload{
 		CorrelationID: payment.CorrelationID,
 		Amount:        fmt.Sprintf("%.2f", payment.Amount),
-		RequestedAt:   requestedAt.Format("2006-01-02T15:04:05.000Z"),
+		RequestedAt:   requestedAt.Format(time.RFC3339Nano),
 	}
 
 	paymentKey := pp.Name + ":" + payment.CorrelationID
@@ -39,32 +41,23 @@ func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
 		return err
 	}
 
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
+	resp, err := http.Post(pp.Endpoint, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	req.SetRequestURI(pp.Endpoint)
-	req.Header.SetMethod("POST")
-	req.Header.SetContentType("application/json")
-
-	req.SetBody(body)
-
-	err = globals.HTTPClient.Do(req, resp)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	_ = resp.Body()
-
-	// Handle non 200
-	if resp.StatusCode() != 200 {
+	if resp.StatusCode != http.StatusOK {
 		pp.Status.Failing = true
-		return fmt.Errorf("failed to post request, status, %d", resp.StatusCode())
+		return fmt.Errorf("failed to post request, status, %d", resp.StatusCode)
 	}
 
-	err = globals.RedisClient.CreatePayment(paymentKey, fixedAmount, timestamp)
+	err = globals.RedisClient.PersistPayment(paymentKey, fixedAmount, timestamp)
 	if err != nil {
 		return err
 	}
@@ -74,17 +67,15 @@ func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
 
 func PaymentTask(payment PaymentRequest) {
 	for {
-		// Choose the appropriate payment processor else we wait
 		pp, err := choosePaymentProcessor()
 		if err != nil {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
-		// Apply the payment using the chosen processor
 		err = ExecutePayment(payment, pp)
 		if err != nil {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 

@@ -13,11 +13,9 @@ type RedisClient struct {
 
 func New(addr string, password string, DB int) RedisClient {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         addr,
-		Password:     password,
-		DB:           0,
-		PoolSize:     500,
-		MinIdleConns: 50,
+		Addr:     addr,
+		Password: password,
+		DB:       0,
 	})
 	ctx := context.Background()
 
@@ -27,7 +25,7 @@ func New(addr string, password string, DB int) RedisClient {
 	}
 }
 
-func (r *RedisClient) CreatePayment(key string, amount int64, timestamp int64) error {
+func (r *RedisClient) PersistPayment(key string, amount int64, timestamp int64) error {
 	keys := []string{key, "payments:by_time"}
 	args := []interface{}{timestamp, amount}
 	if err := createPaymentScript.Run(r.ctx, r.rdb, keys, args).Err(); err != nil {
