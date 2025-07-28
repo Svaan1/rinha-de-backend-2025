@@ -15,7 +15,7 @@ x-api-template: &api-template
     deploy:
       resources:
         limits:
-          cpus: "0.6"
+          cpus: "0.55"
           memory: "150MB"
 
 services:
@@ -44,7 +44,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
+          cpus: "0.05"
           memory: "10MB"
 
   redis:
@@ -54,7 +54,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
+          cpus: "0.2"
           memory: "30MB"
 
   nginx:
@@ -72,7 +72,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
+          cpus: "0.15"
           memory: "10MB"
 
 networks:

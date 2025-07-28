@@ -19,10 +19,9 @@ func PaymentHandler(c *fiber.Ctx) error {
 	}
 
 	task := func() {
-		payments.ExecutePayment(payments.Payment{
+		payments.PaymentTask(payments.PaymentRequest{
 			CorrelationID: data.CorrelationID,
 			Amount:        data.Amount,
-			RequestedAt:   time.Now().UTC(),
 		})
 	}
 

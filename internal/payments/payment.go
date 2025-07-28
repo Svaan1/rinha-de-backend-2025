@@ -10,10 +10,9 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-type Payment struct {
-	CorrelationID string    `json:"correlationId"`
-	Amount        float64   `json:"amount"`
-	RequestedAt   time.Time `json:"requestedAt"`
+type PaymentRequest struct {
+	CorrelationID string  `json:"correlationId"`
+	Amount        float64 `json:"amount"`
 }
 
 type PaymentPayload struct {
@@ -22,8 +21,24 @@ type PaymentPayload struct {
 	RequestedAt   string `json:"requestedAt"`
 }
 
-func usePaymentProcessor(pp *PaymentProcessor, reqBody []byte) error {
-	// Execute the post request
+func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
+	requestedAt := time.Now().UTC()
+
+	payload := PaymentPayload{
+		CorrelationID: payment.CorrelationID,
+		Amount:        fmt.Sprintf("%.2f", payment.Amount),
+		RequestedAt:   requestedAt.Format("2006-01-02T15:04:05.000Z"),
+	}
+
+	paymentKey := pp.Name + ":" + payment.CorrelationID
+	fixedAmount := int64(math.Round(payment.Amount * 100))
+	timestamp := requestedAt.UnixMicro()
+
+	body, err := sonic.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 
@@ -34,9 +49,9 @@ func usePaymentProcessor(pp *PaymentProcessor, reqBody []byte) error {
 	req.Header.SetMethod("POST")
 	req.Header.SetContentType("application/json")
 
-	req.SetBody(reqBody)
+	req.SetBody(body)
 
-	err := globals.HTTPClient.Do(req, resp)
+	err = globals.HTTPClient.Do(req, resp)
 	if err != nil {
 		return err
 	}
@@ -49,47 +64,30 @@ func usePaymentProcessor(pp *PaymentProcessor, reqBody []byte) error {
 		return fmt.Errorf("failed to post request, status, %d", resp.StatusCode())
 	}
 
+	err = globals.RedisClient.CreatePayment(paymentKey, fixedAmount, timestamp)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func ExecutePayment(payment Payment) {
-	payload := PaymentPayload{
-		CorrelationID: payment.CorrelationID,
-		Amount:        fmt.Sprintf("%.2f", payment.Amount),
-		RequestedAt:   payment.RequestedAt.Format("2006-01-02T15:04:05.000Z"),
-	}
-
-	body, err := sonic.Marshal(payload)
-	if err != nil {
-		return
-	}
-
-	var pp *PaymentProcessor
+func PaymentTask(payment PaymentRequest) {
 	for {
 		// Choose the appropriate payment processor else we wait
-		pp, err = choosePaymentProcessor()
+		pp, err := choosePaymentProcessor()
 		if err != nil {
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 
 		// Apply the payment using the chosen processor
-		err = usePaymentProcessor(pp, body)
+		err = ExecutePayment(payment, pp)
 		if err != nil {
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 
-		break
-	}
-
-	// Store the successful payment at redis
-	paymentKey := pp.Name + ":" + payment.CorrelationID
-	fixedAmount := int64(math.Round(payment.Amount * 100))
-	timestamp := payment.RequestedAt.UnixMicro()
-
-	err = globals.RedisClient.CreatePayment(paymentKey, fixedAmount, timestamp)
-	if err != nil {
 		return
 	}
 }
