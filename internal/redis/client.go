@@ -8,7 +8,6 @@ import (
 
 type RedisClient struct {
 	rdb redis.Client
-	ctx context.Context
 }
 
 func New(addr string, password string, DB int) RedisClient {
@@ -17,28 +16,26 @@ func New(addr string, password string, DB int) RedisClient {
 		Password: password,
 		DB:       0,
 	})
-	ctx := context.Background()
 
 	return RedisClient{
 		rdb: *rdb,
-		ctx: ctx,
 	}
 }
 
-func (r *RedisClient) PersistPayment(key string, amount int64, timestamp int64) error {
+func (r *RedisClient) PersistPayment(ctx context.Context, key string, amount int64, timestamp int64) error {
 	keys := []string{key, "payments:by_time"}
 	args := []interface{}{timestamp, amount}
-	if err := createPaymentScript.Run(r.ctx, r.rdb, keys, args).Err(); err != nil {
+	if err := createPaymentScript.Run(ctx, r.rdb, keys, args).Err(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *RedisClient) GetPaymentSummary(fromTimestamp int64, toTimestamp int64) (PaymentSummary, error) {
+func (r *RedisClient) GetPaymentSummary(ctx context.Context, fromTimestamp int64, toTimestamp int64) (PaymentSummary, error) {
 	keys := []string{"payments:by_time"}
 	args := []interface{}{fromTimestamp, toTimestamp}
-	result, err := getPaymentSummaryScript.Run(r.ctx, r.rdb, keys, args).Result()
+	result, err := getPaymentSummaryScript.Run(ctx, r.rdb, keys, args).Result()
 	if err != nil {
 		return PaymentSummary{}, err
 	}
@@ -60,6 +57,6 @@ func (r *RedisClient) GetPaymentSummary(fromTimestamp int64, toTimestamp int64) 
 	}, nil
 }
 
-func (r *RedisClient) Purge() {
-	r.rdb.FlushAll(r.ctx)
+func (r *RedisClient) Purge(ctx context.Context) {
+	r.rdb.FlushAll(ctx)
 }

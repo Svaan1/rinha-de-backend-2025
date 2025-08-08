@@ -2,6 +2,7 @@ package payments
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"math"
@@ -23,7 +24,7 @@ type PaymentPayload struct {
 	RequestedAt   string `json:"requestedAt"`
 }
 
-func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
+func ExecutePayment(ctx context.Context, payment PaymentRequest, pp *PaymentProcessor) error {
 	requestedAt := time.Now().UTC()
 
 	payload := PaymentPayload{
@@ -57,7 +58,7 @@ func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
 		return fmt.Errorf("failed to post request, status, %d", resp.StatusCode)
 	}
 
-	err = globals.RedisClient.PersistPayment(paymentKey, fixedAmount, timestamp)
+	err = globals.RedisClient.PersistPayment(ctx, paymentKey, fixedAmount, timestamp)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func ExecutePayment(payment PaymentRequest, pp *PaymentProcessor) error {
 	return nil
 }
 
-func PaymentTask(payment PaymentRequest) {
+func PaymentTask(ctx context.Context, payment PaymentRequest) {
 	for {
 		pp, err := choosePaymentProcessor()
 		if err != nil {
@@ -73,7 +74,7 @@ func PaymentTask(payment PaymentRequest) {
 			continue
 		}
 
-		err = ExecutePayment(payment, pp)
+		err = ExecutePayment(ctx, payment, pp)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
