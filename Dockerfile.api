@@ -1,25 +1,14 @@
-# syntax=docker/dockerfile:1
 FROM golang:1.24.5-alpine AS builder
-
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOAMD64=v3 \
+    go build -ldflags='-w -s' -a -installsuffix cgo \
+    -gcflags='-m=2' -o api ./cmd/api/main.go
 
-RUN go build -o api ./cmd/api/main.go
-
-
-FROM alpine:3.20
-RUN apk add --no-cache iproute2 iputils
-
-# Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-USER appuser
-WORKDIR /home/appuser
-
-COPY --from=builder /app/api /home/appuser/api
-
-CMD ["/home/appuser/api"]
+FROM scratch
+COPY --from=builder /app/api /api
+ENTRYPOINT ["/api"]

@@ -2,21 +2,14 @@ x-api-template: &api-template
     build:
       context: .
       dockerfile: Dockerfile.api
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
-    sysctls:
-      - net.ipv4.tcp_tw_reuse=1
-      - net.ipv4.tcp_fin_timeout=15
     networks:
       - backend
       - payment-processor
     deploy:
       resources:
         limits:
-          cpus: "0.55"
-          memory: "150MB"
+          cpus: "0.5"
+          memory: "120MB"
 
 services:
   api1:
@@ -54,14 +47,14 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: "0.15"
           memory: "30MB"
 
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
+  haproxy:
+    image: haproxy:3.2.3-alpine
+    container_name: haproxy
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro1
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "9999:80"
     depends_on:
@@ -72,8 +65,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "10MB"
+          cpus: "0.30"
+          memory: "70MB"
 
 networks:
   backend:
