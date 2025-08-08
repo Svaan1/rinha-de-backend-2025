@@ -87,9 +87,9 @@ func choosePaymentProcessor() (*PaymentProcessor, error) {
 		return &DefaultPaymentProcessor, nil
 	}
 
-	if !FallbackPaymentProcessor.Status.Failing {
-		return &FallbackPaymentProcessor, nil
-	}
+	// if !FallbackPaymentProcessor.Status.Failing {
+	// 	return &FallbackPaymentProcessor, nil
+	// }
 
 	return nil, fmt.Errorf("no payment processor available")
 }
