@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"math"
 	"time"
 
@@ -13,19 +14,22 @@ import (
 func PaymentHandler(c *fiber.Ctx) error {
 	body := c.Body()
 
-	var data PaymentRequest
-	if err := sonic.Unmarshal(body, &data); err != nil {
-		return c.SendStatus(fiber.StatusBadRequest)
-	}
+	go func(body []byte) {
+		var data PaymentRequest
+		if err := sonic.Unmarshal(body, &data); err != nil {
+			return
+		}
 
-	task := func() {
-		payments.PaymentTask(payments.PaymentRequest{
-			CorrelationID: data.CorrelationID,
-			Amount:        data.Amount,
-		})
-	}
+		task := func() {
+			payments.PaymentTask(context.Background(), payments.PaymentRequest{
+				CorrelationID: data.CorrelationID,
+				Amount:        data.Amount,
+			})
+		}
 
-	globals.QueueDispatcher.Dispatch(task)
+		globals.QueueDispatcher.Dispatch(task)
+	}(body)
+
 	return c.SendStatus(fiber.StatusCreated)
 }
 
@@ -45,7 +49,7 @@ func PaymentSummaryHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	result, err := globals.RedisClient.GetPaymentSummary(fromTimestamp, toTimestamp)
+	result, err := globals.RedisClient.GetPaymentSummary(c.Context(), fromTimestamp, toTimestamp)
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
@@ -60,6 +64,6 @@ func PaymentSummaryHandler(c *fiber.Ctx) error {
 }
 
 func PurgePaymentsHandler(c *fiber.Ctx) error {
-	globals.RedisClient.Purge()
+	globals.RedisClient.Purge(c.Context())
 	return c.SendStatus(fiber.StatusOK)
 }
